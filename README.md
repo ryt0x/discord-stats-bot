@@ -139,11 +139,3 @@ Contributions are welcome. Suggested workflow:
 Please keep changes focused and follow the existing code style.
 
 ---
-
-## License
-
-Specify your license here (e.g., MIT) or remove this section if proprietary.
-
----
-
-If you'd like, I can also add example screenshots for the embeds, a short `docker-compose` example, or update `.env.example` with clearer defaults.
