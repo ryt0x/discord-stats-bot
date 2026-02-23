@@ -35,6 +35,20 @@ hourly_counts: DefaultDict[int, DefaultDict[int, int]] = defaultdict(
 last_reset: dict[int, date] = {}
 
 # --------------------------------------------------------------------------- #
+# Previous day snapshots (captured at midnight before reset)                   #
+# --------------------------------------------------------------------------- #
+
+previous_message_counts: DefaultDict[int, DefaultDict[int, int]] = defaultdict(
+    lambda: defaultdict(int)
+)
+previous_channel_counts: DefaultDict[int, DefaultDict[int, int]] = defaultdict(
+    lambda: defaultdict(int)
+)
+previous_hourly_counts: DefaultDict[int, DefaultDict[int, int]] = defaultdict(
+    lambda: defaultdict(int)
+)
+
+# --------------------------------------------------------------------------- #
 # Persistent config (written to disk as JSON)                                  #
 # --------------------------------------------------------------------------- #
 
@@ -76,6 +90,23 @@ def record_message(guild_id: int, user_id: int, channel_id: int) -> None:
     hourly_counts[guild_id][hour] += 1
 
 
+def snapshot_and_reset(guild_id: int) -> None:
+    """Snapshot current counters to 'previous_' dicts, then reset current counters."""
+    # Save current counters as previous day's data
+    previous_message_counts[guild_id] = message_counts[guild_id].copy()
+    previous_channel_counts[guild_id] = channel_counts[guild_id].copy()
+    previous_hourly_counts[guild_id] = hourly_counts[guild_id].copy()
+    
+    # Clear current counters
+    message_counts[guild_id].clear()
+    channel_counts[guild_id].clear()
+    hourly_counts[guild_id].clear()
+    
+    # Update reset timestamp
+    now = datetime.now(timezone.utc)
+    last_reset[guild_id] = (now - timedelta(hours=DAILY_SUMMARY_UTC_HOUR)).date()
+
+
 def _auto_reset(guild_id: int) -> None:
     """Reset counters if the UTC date has rolled over."""
     now = datetime.now(timezone.utc)
@@ -83,21 +114,12 @@ def _auto_reset(guild_id: int) -> None:
     # counters are reset only after the scheduled summary has run.
     shifted_day = (now - timedelta(hours=DAILY_SUMMARY_UTC_HOUR)).date()
     if last_reset.get(guild_id) != shifted_day:
-        message_counts[guild_id].clear()
-        channel_counts[guild_id].clear()
-        hourly_counts[guild_id].clear()
-        last_reset[guild_id] = shifted_day
+        snapshot_and_reset(guild_id)
 
 
 def reset_guild(guild_id: int) -> None:
     """Force-reset all counters for a guild (called by the daily summary task)."""
-    message_counts[guild_id].clear()
-    channel_counts[guild_id].clear()
-    hourly_counts[guild_id].clear()
-    # Use the same shifted-day representation as _auto_reset so both
-    # mechanisms agree on the current counter period.
-    now = datetime.now(timezone.utc)
-    last_reset[guild_id] = (now - timedelta(hours=DAILY_SUMMARY_UTC_HOUR)).date()
+    snapshot_and_reset(guild_id)
 
 
 def get_total_messages(guild_id: int) -> int:
@@ -121,6 +143,34 @@ def get_top_channels(guild_id: int, limit: int = 5) -> list[tuple[int, int]]:
 def get_peak_hour(guild_id: int) -> int | None:
     """Returns the UTC hour with the most messages, or None if no data."""
     counts = hourly_counts[guild_id]
+    if not counts:
+        return None
+    return max(counts, key=lambda h: counts[h])
+
+
+def get_previous_total_messages(guild_id: int) -> int:
+    """Returns total messages from the previous day's snapshot."""
+    return sum(previous_message_counts[guild_id].values())
+
+
+def get_previous_active_users(guild_id: int) -> int:
+    """Returns active users from the previous day's snapshot."""
+    return len(previous_message_counts[guild_id])
+
+
+def get_previous_top_users(guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
+    """Returns [(user_id, count), ...] from previous day, sorted descending."""
+    return sorted(previous_message_counts[guild_id].items(), key=lambda x: x[1], reverse=True)[:limit]
+
+
+def get_previous_top_channels(guild_id: int, limit: int = 5) -> list[tuple[int, int]]:
+    """Returns [(channel_id, count), ...] from previous day, sorted descending."""
+    return sorted(previous_channel_counts[guild_id].items(), key=lambda x: x[1], reverse=True)[:limit]
+
+
+def get_previous_peak_hour(guild_id: int) -> int | None:
+    """Returns the UTC hour with the most messages from previous day, or None if no data."""
+    counts = previous_hourly_counts[guild_id]
     if not counts:
         return None
     return max(counts, key=lambda h: counts[h])

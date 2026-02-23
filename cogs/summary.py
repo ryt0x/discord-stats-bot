@@ -59,11 +59,11 @@ class Summary(commands.Cog):
 
         embed = await build_stats_embed(
             guild=guild,
-            top_users=store.get_top_users(guild.id, TOP_USERS_LIMIT),
-            top_channels=store.get_top_channels(guild.id, TOP_CHANNELS_LIMIT),
-            total_messages=store.get_total_messages(guild.id),
-            active_users=store.get_active_users(guild.id),
-            peak_hour=store.get_peak_hour(guild.id),
+            top_users=store.get_previous_top_users(guild.id, TOP_USERS_LIMIT),
+            top_channels=store.get_previous_top_channels(guild.id, TOP_CHANNELS_LIMIT),
+            total_messages=store.get_previous_total_messages(guild.id),
+            active_users=store.get_previous_active_users(guild.id),
+            peak_hour=store.get_previous_peak_hour(guild.id),
             is_daily_summary=True,
         )
 
