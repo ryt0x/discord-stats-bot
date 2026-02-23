@@ -3,6 +3,7 @@ from discord.ext import commands
 import asyncio
 import logging
 from config import BOT_TOKEN, COMMAND_PREFIX
+import store
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +54,8 @@ class StatsBot(commands.Bot):
 
 async def main():
     bot = StatsBot()
+    # Load persisted guild config into memory before cogs initialize
+    store.load_config()
 
     @bot.command()
     @commands.is_owner()

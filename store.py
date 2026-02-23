@@ -15,7 +15,8 @@ from __future__ import annotations
 import json
 import os
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
+from config import DAILY_SUMMARY_UTC_HOUR
 from typing import DefaultDict
 
 # --------------------------------------------------------------------------- #
@@ -77,12 +78,15 @@ def record_message(guild_id: int, user_id: int, channel_id: int) -> None:
 
 def _auto_reset(guild_id: int) -> None:
     """Reset counters if the UTC date has rolled over."""
-    today = datetime.now(timezone.utc).date()
-    if last_reset.get(guild_id) != today:
+    now = datetime.now(timezone.utc)
+    # Align the day boundary with the configured daily summary hour so
+    # counters are reset only after the scheduled summary has run.
+    shifted_day = (now - timedelta(hours=DAILY_SUMMARY_UTC_HOUR)).date()
+    if last_reset.get(guild_id) != shifted_day:
         message_counts[guild_id].clear()
         channel_counts[guild_id].clear()
         hourly_counts[guild_id].clear()
-        last_reset[guild_id] = today
+        last_reset[guild_id] = shifted_day
 
 
 def reset_guild(guild_id: int) -> None:
@@ -90,7 +94,10 @@ def reset_guild(guild_id: int) -> None:
     message_counts[guild_id].clear()
     channel_counts[guild_id].clear()
     hourly_counts[guild_id].clear()
-    last_reset[guild_id] = datetime.now(timezone.utc).date()
+    # Use the same shifted-day representation as _auto_reset so both
+    # mechanisms agree on the current counter period.
+    now = datetime.now(timezone.utc)
+    last_reset[guild_id] = (now - timedelta(hours=DAILY_SUMMARY_UTC_HOUR)).date()
 
 
 def get_total_messages(guild_id: int) -> int:
