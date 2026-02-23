@@ -127,15 +127,3 @@ Key config values live in `.env` or `config.py`.
 - `TOP_USERS_LIMIT` (default: `10`) — number of users in leaderboards.
 
 ---
-
-## Contributing
-
-Contributions are welcome. Suggested workflow:
-
-1. Fork the repo.
-2. Create a feature branch.
-3. Open a PR with a clear description and testing steps.
-
-Please keep changes focused and follow the existing code style.
-
----
