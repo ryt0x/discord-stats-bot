@@ -15,70 +15,86 @@ A lightweight Discord bot that tracks message activity in your server and surfac
 
 ---
 
-## Project Structure
+# 📊 Discord Stats Bot
+
+A small, easy-to-run Discord bot that tracks daily message activity and posts simple summaries — no external database required.
+
+---
+
+## Overview
+
+- Tracks messages per-user and per-channel for each guild.
+- Provides a `/stats` command for an at-a-glance leaderboard and summary.
+- Posts a configurable daily summary embed to a designated channel.
+
+This repository is focused on reliability and minimal setup for self-hosting.
+
+---
+
+## Features
+
+- Message counting (per-user, per-channel) with daily reset at UTC midnight
+- `/stats` slash command (shows top users/channels, totals, peak hour)
+- `/setup` slash command (admin-only) to set the daily summary channel
+- Configurable daily summary hour via environment variable
+
+---
+
+## Repository Layout
 
 ```
-discord-stats-bot/
-├── bot.py              # Entry point — creates the bot and loads cogs
-├── config.py           # Loads settings from .env
-├── store.py            # In-memory counters + lightweight JSON config persistence
-├── requirements.txt
-├── .env.example
-├── cogs/
-│   ├── tracker.py      # Listens to messages and records them in the store
-│   ├── stats.py        # /stats slash command
-│   ├── setup.py        # /setup slash command (admin only)
-│   └── summary.py      # Background task that posts the daily summary
-└── utils/
-    └── embeds.py       # Shared embed builder (used by /stats and the daily summary)
+bot.py               # Entry point — creates the bot and loads cogs
+config.py            # Configuration loader (env + defaults)
+store.py             # In-memory counters + persistence for guild config
+requirements.txt
+.env.example
+data/                # runtime data (e.g. data/config.json)
+cogs/                # cog implementations
+    ├─ tracker.py       # message event listeners
+    ├─ stats.py         # /stats command
+    ├─ setup.py         # /setup command
+    └─ summary.py       # daily summary task
+utils/
+    └─ embeds.py        # helpers to build Discord embeds
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Clone and install dependencies
+1. Clone the repo and create a virtual environment
 
 ```bash
-git clone <your-repo-url>
-cd discord-stats-bot
+git clone github.com/ryt0x/discord-stats-bot  
+cd "discord-stats-bot"
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Create a Discord application and bot
+2. Create a Discord application and bot
 
-1. Go to <https://discord.com/developers/applications> and create a **New Application**.
-2. Navigate to **Bot** → click **Add Bot**.
-3. Under **Token**, click **Reset Token** and copy it.
-4. Under **Privileged Gateway Intents**, enable:
-   - **Server Members Intent**
-   - **Message Content Intent**
+- Visit https://discord.com/developers/applications and create an application.
+- Add a bot user under **Bot** and copy the token.
+- Enable **Message Content Intent** and **Server Members Intent** if you want richer tracking.
 
-### 3. Invite the bot to your server
+3. Invite the bot to your server
 
-Use the **OAuth2 → URL Generator** in the developer portal:
+- Use the OAuth2 URL Generator with scopes `bot` and `applications.commands`.
+- Typical permissions: `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`.
 
-- **Scopes:** `bot`, `applications.commands`
-- **Bot Permissions:** `Read Messages/View Channels`, `Send Messages`, `Embed Links`
-
-Open the generated URL and add the bot to your server.
-
-### 4. Configure environment variables
+4. Configure environment variables
 
 ```bash
-cp .env.example .env
+copy .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env` and set `DISCORD_BOT_TOKEN` and `DAILY_SUMMARY_UTC_HOUR` (0–23).
 
-```env
-DISCORD_BOT_TOKEN=your-token-here
-DAILY_SUMMARY_UTC_HOUR=0       # 0 = midnight UTC; change to e.g. 9 for 9 AM UTC
-```
-
-### 5. Run the bot
+5. Run the bot
 
 ```bash
 python bot.py
@@ -88,40 +104,46 @@ python bot.py
 
 ## Commands
 
-| Command | Who can use it | Description |
-|---|---|---|
-| `/stats` | Everyone | Shows today's activity summary |
-| `/setup [channel]` | Admins (Manage Server) | Sets the channel for daily summaries |
+- `/stats` — visible to everyone; shows today's leaderboard and stats.
+- `/setup [channel]` — admin-only (Manage Server) command to set the daily summary channel.
+ - `/setup-clear` — admin-only (Manage Server) command to stop posting daily summaries and clear the configured stats channel.
 
 ---
 
-## How data is stored
+## Data & Persistence
 
-- **Message counts** live in memory and reset automatically each UTC day.
-- **Guild config** (the stats channel you set with `/setup`) is written to `data/config.json` so it survives bot restarts.
-- No database is required. If you want persistence across restarts for message counts, that's a natural next step (SQLite is recommended).
-
----
-
-## Customisation
-
-All tuneable values live in `.env` or `config.py`:
-
-| Variable | Default | Description |
-|---|---|---|
-| `DISCORD_BOT_TOKEN` | — | **Required.** Your bot token. |
-| `COMMAND_PREFIX` | `!` | Prefix for legacy text commands. |
-| `DAILY_SUMMARY_UTC_HOUR` | `0` | UTC hour to post daily summary (0–23). |
-| `TOP_USERS_LIMIT` | `10` | Max users shown in the leaderboard. |
-| `TOP_CHANNELS_LIMIT` | `5` | Max channels shown in the summary. |
+- Message counts are kept in memory and reset each UTC day.
+- Guild configuration (summary channel) is saved to `data/config.json` so it persists across restarts.
+- If you need historical persistence, consider adding SQLite or another lightweight DB and migrating `store.py`.
 
 ---
 
-## Roadmap (post-MVP ideas)
+## Configuration Options
 
-- [ ] SQLite persistence for historical trends
-- [ ] Weekly/monthly reports
-- [ ] Emoji bar charts or image-based charts
-- [ ] Per-user privacy opt-out
-- [ ] Custom time zones per guild
-- [ ] Web dashboard export
+Key config values live in `.env` or `config.py`.
+
+- `DISCORD_BOT_TOKEN` (required) — your bot token.
+- `DAILY_SUMMARY_UTC_HOUR` (default: `0`) — UTC hour to post daily summary.
+- `TOP_USERS_LIMIT` (default: `10`) — number of users in leaderboards.
+
+---
+
+## Contributing
+
+Contributions are welcome. Suggested workflow:
+
+1. Fork the repo.
+2. Create a feature branch.
+3. Open a PR with a clear description and testing steps.
+
+Please keep changes focused and follow the existing code style.
+
+---
+
+## License
+
+Specify your license here (e.g., MIT) or remove this section if proprietary.
+
+---
+
+If you'd like, I can also add example screenshots for the embeds, a short `docker-compose` example, or update `.env.example` with clearer defaults.
